@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: devops-static
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: devops-static
+
+  template:
+    metadata:
+      labels:
+        app: devops-static
+
+    spec:
+      containers:
+      - name: devops-static
+        image: jatindixit/devops-static-website:v1
+
+        ports:
+        - containerPort: 80
