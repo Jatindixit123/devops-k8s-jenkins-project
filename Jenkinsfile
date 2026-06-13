@@ -21,7 +21,7 @@ pipeline {
             }
         }
 
-        stage('Docker Login & Push') {
+        stage('Docker Login & Push (Debug Enabled)') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
@@ -30,7 +30,16 @@ pipeline {
                 )]) {
 
                     bat '''
+                    echo ===== DEBUG INFO =====
+                    echo USER=%DOCKER_USER%
+                    echo PASS_LENGTH=%DOCKER_PASS%
+
+                    echo ======================
+
                     echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+
+                    if %ERRORLEVEL% NEQ 0 exit /b 1
+
                     docker push %IMAGE_NAME%:%IMAGE_TAG%
                     '''
                 }
