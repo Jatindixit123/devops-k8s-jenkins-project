@@ -21,7 +21,7 @@ pipeline {
             }
         }
 
-        stage('Docker Login & Push (Debug Enabled)') {
+        stage('Docker Login & Push (FIXED WINDOWS SAFE)') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
@@ -32,14 +32,19 @@ pipeline {
                     bat '''
                     echo ===== DEBUG INFO =====
                     echo USER=%DOCKER_USER%
-                    echo PASS_LENGTH=%DOCKER_PASS%
-
                     echo ======================
 
-                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    REM Write password safely to file (Windows safe method)
+                    echo %DOCKER_PASS%>dockerpass.txt
+
+                    REM Login using file (NO PIPE ISSUES)
+                    type dockerpass.txt | docker login -u %DOCKER_USER% --password-stdin
 
                     if %ERRORLEVEL% NEQ 0 exit /b 1
 
+                    del dockerpass.txt
+
+                    REM Push image
                     docker push %IMAGE_NAME%:%IMAGE_TAG%
                     '''
                 }
