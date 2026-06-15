@@ -1,7 +1,7 @@
 pipeline {
 agent any
 
-```
+
 environment {
     IMAGE_NAME = "jatindixit/devops-static-website"
     IMAGE_TAG = "latest"
