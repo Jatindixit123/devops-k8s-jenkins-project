@@ -1,77 +1,74 @@
 pipeline {
-agent any
+    agent any
 
-
-environment {
-    IMAGE_NAME = "jatindixit/devops-static-website"
-    IMAGE_TAG = "latest"
-}
-
-stages {
-
-    stage('Checkout') {
-        steps {
-            git branch: 'main',
-                url: 'https://github.com/Jatindixit123/devops-k8s-jenkins-project.git'
-        }
+    environment {
+        IMAGE_NAME = "jatindixit/devops-static-website"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        KUBECONFIG = "C:\\Users\\DELL\\.kube\\config"
     }
 
-    stage('Build Docker Image') {
-        steps {
-            bat 'docker build -t %IMAGE_NAME%:%IMAGE_TAG% .'
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/Jatindixit123/devops-k8s-jenkins-project.git'
+            }
         }
-    }
 
-    stage('Docker Login & Push') {
-        steps {
-            withCredentials([usernamePassword(
-                credentialsId: 'dockerhub-creds',
-                usernameVariable: 'DOCKER_USER',
-                passwordVariable: 'DOCKER_PASS'
-            )]) {
+        stage('Build Docker Image') {
+            steps {
+                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+            }
+        }
 
+        stage('Docker Login & Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    bat '''
+                    echo %DOCKER_PASS%>pass.txt
+                    type pass.txt | docker login -u %DOCKER_USER% --password-stdin
+                    del pass.txt
+
+                    docker push %IMAGE_NAME%:%IMAGE_TAG%
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy To Minikube') {
+            steps {
                 bat '''
-                echo %DOCKER_PASS%>dockerpass.txt
+                set KUBECONFIG=C:\\Users\\DELL\\.kube\\config
 
-                type dockerpass.txt | docker login -u %DOCKER_USER% --password-stdin
+                kubectl config current-context
+                kubectl get nodes
 
-                if %ERRORLEVEL% NEQ 0 exit /b 1
+                REM Update image in deployment (IMPORTANT FIX)
+                kubectl set image deployment/devops-static devops-static=%IMAGE_NAME%:%IMAGE_TAG%
 
-                del dockerpass.txt
+                REM Wait for rollout
+                kubectl rollout status deployment/devops-static
 
-                docker push %IMAGE_NAME%:%IMAGE_TAG%
+                REM Verify pods
+                kubectl get pods
                 '''
             }
         }
     }
 
-    stage('Deploy To Minikube') {
-        steps {
-            bat '''
-            set KUBECONFIG=C:\\Users\\DELL\\.kube\\config
+    post {
+        success {
+            echo "SUCCESS: Application deployed successfully to Kubernetes"
+        }
 
-            kubectl config current-context
-            kubectl get nodes
-
-            kubectl apply -f k8s/deployment.yaml
-            kubectl apply -f k8s/service.yaml
-
-            kubectl rollout restart deployment/devops-static
-            kubectl rollout status deployment/devops-static
-            '''
+        failure {
+            echo "FAILED: Pipeline execution failed"
         }
     }
-}
-
-post {
-    success {
-        echo 'Application deployed successfully'
-    }
-
-    failure {
-        echo 'Pipeline failed'
-    }
-}
-
-
 }
