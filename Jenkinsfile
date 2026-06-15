@@ -5,7 +5,6 @@ agent any
 environment {
     IMAGE_NAME = "jatindixit/devops-static-website"
     IMAGE_TAG = "latest"
-    KUBECONFIG = "C:\\Users\\DELL\\.kube\\config"
 }
 
 stages {
@@ -19,19 +18,17 @@ stages {
 
     stage('Build Docker Image') {
         steps {
-            bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+            bat 'docker build -t %IMAGE_NAME%:%IMAGE_TAG% .'
         }
     }
 
     stage('Docker Login & Push') {
         steps {
-            withCredentials([
-                usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )
-            ]) {
+            withCredentials([usernamePassword(
+                credentialsId: 'dockerhub-creds',
+                usernameVariable: 'DOCKER_USER',
+                passwordVariable: 'DOCKER_PASS'
+            )]) {
 
                 bat '''
                 echo %DOCKER_PASS%>dockerpass.txt
@@ -51,16 +48,15 @@ stages {
     stage('Deploy To Minikube') {
         steps {
             bat '''
-            kubectl config current-context
+            set KUBECONFIG=C:\\Users\\DELL\\.kube\\config
 
+            kubectl config current-context
             kubectl get nodes
 
             kubectl apply -f k8s/deployment.yaml
-
             kubectl apply -f k8s/service.yaml
 
             kubectl rollout restart deployment/devops-static
-
             kubectl rollout status deployment/devops-static
             '''
         }
@@ -69,13 +65,13 @@ stages {
 
 post {
     success {
-        echo 'SUCCESS: Application deployed to Kubernetes'
+        echo 'Application deployed successfully'
     }
 
     failure {
-        echo 'FAILED: Pipeline execution failed'
+        echo 'Pipeline failed'
     }
 }
-```
+
 
 }
